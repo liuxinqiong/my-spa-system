@@ -3,9 +3,10 @@
       <input type="text" class='add-input' autofocus placeholder="接下去要做什么？" @keyup.enter="addTodo">
       <Item
         v-for="todo in filteredTodos"
-        :key="todo.id"
-        :todo="todo"
+        :key="todo._id"
+        :todo.sync="todo"
         @del="deleteTodo"
+        @update:completed="toggleCompleted(todo, $event)"
       />
       <Tabs :filter="filter" :todos="todos" @toggle="toggleFilter" @clearAll="clearAllCompleted"></Tabs>
   </section>
@@ -14,8 +15,8 @@
 <script>
 import Item from "./item.vue";
 import Tabs from "./tabs.vue";
+import TODO from '@/service/todo'
 
-let id = 0;
 export default {
   components: {
     Item,
@@ -38,22 +39,59 @@ export default {
   },
   methods: {
     addTodo(e) {
-      this.todos.unshift({
-        id: id++,
-        content: e.target.value.trim(),
-        completed: false
-      });
-      e.target.value = "";
+      TODO.create({
+        todo: {
+          content: e.target.value.trim()
+        }
+      }).then( data => {
+        e.target.value = "";
+        this.getList()
+      })
     },
     toggleFilter(state) {
       this.filter = state;
     },
-    deleteTodo(id) {
-      this.todos.splice(this.todos.findIndex(todo => todo.id === id), 1);
+    toggleCompleted(todo, completed) {
+      TODO.updateOne({
+        todo: {
+          ...todo,
+          completed
+        }
+      })
+    },
+    deleteTodo(_id) {
+      let todo = this.todos.filter(todo => todo._id === _id)[0]
+      TODO.updateOne({
+        todo: {
+          ...todo,
+          isDel: true
+        }
+      }).then(data => {
+        this.todos.splice(this.todos.findIndex(todo => todo._id === _id), 1);
+      })
     },
     clearAllCompleted() {
-      this.todos = this.todos.filter(todo => !todo.completed);
+      const todoIds = this.todos.filter(todo => todo.completed).map(todo => todo._id);
+      TODO.update({
+        todoIds: todoIds,
+        todo: {
+          isDel: true
+        }
+      }).then(data => {
+        this.todos = this.todos.filter(todo => !todo.completed)
+      })
+    },
+    getList() {
+      TODO.list().then(data => {
+        this.todos = data
+      })
+    },
+    init() {
+      this.getList()
     }
+  },
+  created() {
+    this.init()
   }
 };
 </script>

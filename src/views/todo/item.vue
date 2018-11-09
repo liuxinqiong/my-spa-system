@@ -18,9 +18,14 @@ export default {
       require: true
     }
   },
+  watch: {
+      "todo.completed"(newVal) {
+          this.$emit('update:completed', newVal)
+      }
+  },
   methods: {
     deleteTodo() {
-      this.$emit("del", this.todo.id);
+      this.$emit("del", this.todo._id);
     }
   }
 };
